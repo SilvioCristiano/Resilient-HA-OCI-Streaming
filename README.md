@@ -5,7 +5,7 @@ This repository contains a Java application demonstrating a **High Availability 
 The key objective is to provide resilience by implementing an automatic failover mechanism: if the primary OCI Stream in the São Paulo region experiences transient errors (HTTP 500 or 429), the application automatically **provisions and switches to a secondary stream** in the Vinhedo region.
 
 ## 🚀 Overview
-    
+![Logo da empresa](s0.png "Overview")  
 
 The solution is divided into four main Java classes and one configuration file:
 
