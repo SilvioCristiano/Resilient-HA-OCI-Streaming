@@ -37,36 +37,6 @@ The goal of this codebase is to build a **resilient Streaming environment** capa
 
 # 📡 Architecture Overview
 
-flowchart TD
-
-    A[Start Application] --> B[Load OCI Config & Auth Provider]
-
-    B --> C[Initialize PRIMARY StreamClient<br/>Primary OCID + Primary Endpoint]
-    C --> D[Create Cursor (TrimHorizon)]
-
-    D --> E{Consume Messages}
-
-    %% Primary working
-    E -->|Success| F[Process Messages]
-    F --> E
-
-    %% Primary Failure
-    E -->|Exception| G[Primary Failure Detected]
-
-    G --> H[Load Secondary Endpoint & OCID<br/>from stream-properties]
-    
-    H --> I{Secondary Info Present?}
-
-    I -->|No| J[Retry Primary<br/>Sleep 10s] --> E
-
-    I -->|Yes| K[Initialize/Update Secondary StreamClient]
-
-    K --> L[Switch currentClient<br/>= secondaryClient]
-
-    L --> M[Create New Cursor<br/>for Secondary Stream]
-
-    M --> E
-
 ### 🟦 Normal flow
 
 ```
