@@ -6,6 +6,90 @@ The key objective is to provide resilience by implementing an automatic failover
 
 ## 🚀 Overview
 
+graph TD
+    subgraph OCI Cloud (Tenancy)
+        subgraph Região de São Paulo (sa-saopaulo-1)
+            A[OCI-PRIMARY-STREAM]
+            direction LR
+        end
+
+        subgraph Região de Vinhedo (sa-vinhedo-1)
+            B[OCI-SECONDARY-STREAM]
+            direction LR
+        end
+    end
+
+    subgraph Aplicação Java Local
+        P[StreamProducer]
+        M[StreamManager]
+        C[StreamConsumer]
+        U[StreamUtils]
+        F[stream.properties]
+        E[Variáveis de Ambiente]
+
+        P --> M
+        M --> C
+        M --> U
+        U --> F
+        U --> E
+        C --> U
+    end
+
+    style A fill:#D4EDDA,stroke:#28A745,stroke-width:2px,stroke-dasharray: 5 5;
+    style B fill:#FFF3CD,stroke:#FFC107,stroke-width:2px;
+    style P fill:#ADD8E6,stroke:#3498DB,stroke-width:1px;
+    style C fill:#ADD8E6,stroke:#3498DB,stroke-width:1px;
+    style M fill:#E0BBE4,stroke:#9B59B6,stroke-width:1px;
+    style U fill:#DCDCDC,stroke:#6C757D,stroke-width:1px;
+    style F fill:#F8F9FA,stroke:#6C757D,stroke-width:1px;
+    style E fill:#F0F8FF,stroke:#6C757D,stroke-width:1px;
+
+
+    %% Fluxo de Produção
+    P -- "1. Envia Mensagens" --> M
+
+    M -- "2a. Tentativa de Envio (com retries)" --> A
+    M -- "2b. Falha (500/429)" --> M
+    M -- "3. Cria/Carrega Secundário" --> B
+
+    M -- "4. Envia para Secundário" --> B
+
+    %% Fluxo de Consumo
+    C -- "1. Tenta Consumir" --> A
+    C -- "2a. Erro (500/429)" --> C
+    C -- "2b. Carrega Secundário" --> B
+    C -- "3. Consome do Secundário" --> B
+
+    %% Interação com StreamUtils
+    M -- "Salva OCID/Endpoint" --> U
+    U -- "Armazena" --> F
+    U -- "Exporta" --> E
+
+    C -- "Carrega OCID/Endpoint" --> U
+    U -- "Lê" --> F
+    U -- "Lê" --> E
+
+    %% Linhas de dados para persistência
+    F -- "OCID/Endpoint Secundário" --. U
+    E -- "OCID/Endpoint Secundário" --. U
+
+    linkStyle 0 stroke:#007bff,stroke-width:2px;
+    linkStyle 1 stroke:#28a745,stroke-width:2px;
+    linkStyle 2 stroke:#dc3545,stroke-width:2px,stroke-dasharray: 5 5;
+    linkStyle 3 stroke:#ffc107,stroke-width:2px;
+    linkStyle 4 stroke:#ffc107,stroke-width:2px;
+    linkStyle 5 stroke:#007bff,stroke-width:2px;
+    linkStyle 6 stroke:#dc3545,stroke-width:2px,stroke-dasharray: 5 5;
+    linkStyle 7 stroke:#ffc107,stroke-width:2px;
+    linkStyle 8 stroke:#ffc107,stroke-width:2px;
+    linkStyle 9 stroke:#28a745,stroke-width:2px;
+    linkStyle 10 stroke:#9B59B6,stroke-width:1px;
+    linkStyle 11 stroke:#9B59B6,stroke-width:1px;
+    linkStyle 12 stroke:#9B59B6,stroke-width:1px;
+    linkStyle 13 stroke:#9B59B6,stroke-width:1px;
+    linkStyle 14 stroke:#6C757D,stroke-width:1px;
+    linkStyle 15 stroke:#6C757D,stroke-width:1px;
+
 The solution is divided into four main Java classes and one configuration file:
 
 | Class/File | Description | Role |
