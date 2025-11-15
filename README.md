@@ -1,9 +1,3 @@
-Below is a **clean, well-structured Markdown (.md) documentation** in **English**, fully ready to paste into GitHub.
-
-It explains the **goal**, **architecture**, **components**, **failover process**, and contains **code snippets** and **diagrams**.
-
----
-
 # 🟦 OCI Streaming High Availability (HA) – Java Auto-Failover Architecture
 
 This project implements a **High-Availability (HA)** and **self-healing** architecture for **Oracle Cloud Infrastructure (OCI) Streaming**, using **Java + OCI SDK**.
