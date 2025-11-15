@@ -1,0 +1,30 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.oracle.oci.sdk</groupId>
+    <artifactId>oci-java-sdk</artifactId>
+    <version>3.55.1</version>
+  </parent>
+
+  <artifactId>oci-java-sdk-addons</artifactId>
+  <packaging>pom</packaging>
+  <name>Oracle Cloud Infrastructure SDK - Addons</name>
+  <description>This project contains add-on modules for Oracle Cloud Infrastructure</description>
+  <url>https://docs.cloud.oracle.com/Content/API/SDKDocs/javasdk.htm</url>
+
+  <modules>
+    <module>bmc-apache-connector-provider</module>
+    <module>bmc-resteasy-client-configurator</module>
+    <module>bmc-sasl</module>
+    <module>bmc-apache-configurator-jersey-addon</module>
+    <module>bmc-apache-configurator-jersey3-addon</module>
+    <module>bmc-oke-workload-identity</module>
+    <module>bmc-sasl-oke-workload-identity</module>
+    <module>bmc-sse-support</module>
+    <module>bmc-sse-support-jersey3</module>
+    <module>bmc-aispeech-realtime</module>
+  </modules>
+
+</project>

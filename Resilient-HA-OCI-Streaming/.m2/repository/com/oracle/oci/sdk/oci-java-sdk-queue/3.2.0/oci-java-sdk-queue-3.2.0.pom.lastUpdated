@@ -1,0 +1,4 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Tue Sep 30 15:30:20 BRT 2025
+@default-my-mirror-https\://repo.maven.apache.org/maven2/.lastUpdated=1759257020967
+https\://repo.maven.apache.org/maven2/.error=Could not transfer artifact com.oracle.oci.sdk\:oci-java-sdk-queue\:pom\:3.2.0 from/to my-mirror (https\://repo.maven.apache.org/maven2/)\: Network is unreachable\: getsockopt

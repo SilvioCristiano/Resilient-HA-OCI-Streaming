@@ -1,0 +1,4 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Wed Jul 02 20:12:52 BRT 2025
+plexus-compiler-api-2.15.0.jar>my-mirror=
+plexus-compiler-api-2.15.0.pom>my-mirror=

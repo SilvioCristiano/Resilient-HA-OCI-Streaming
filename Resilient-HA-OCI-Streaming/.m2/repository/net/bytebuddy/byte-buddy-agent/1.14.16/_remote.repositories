@@ -1,0 +1,4 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Wed Jul 02 20:12:56 BRT 2025
+byte-buddy-agent-1.14.16.jar>my-mirror=
+byte-buddy-agent-1.14.16.pom>my-mirror=

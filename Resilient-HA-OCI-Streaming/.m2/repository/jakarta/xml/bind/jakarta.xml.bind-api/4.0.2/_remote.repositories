@@ -1,0 +1,4 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Wed Jul 02 20:12:56 BRT 2025
+jakarta.xml.bind-api-4.0.2.jar>my-mirror=
+jakarta.xml.bind-api-4.0.2.pom>my-mirror=

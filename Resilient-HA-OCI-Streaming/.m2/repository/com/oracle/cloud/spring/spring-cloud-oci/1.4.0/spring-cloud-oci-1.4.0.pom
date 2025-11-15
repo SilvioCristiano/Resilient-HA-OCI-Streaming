@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Copyright (c) 2023, 2024, Oracle and/or its affiliates.
+Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
+-->
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-build</artifactId>
+    <version>4.2.0</version>
+    <relativePath></relativePath>
+  </parent>
+  <groupId>com.oracle.cloud.spring</groupId>
+  <artifactId>spring-cloud-oci</artifactId>
+  <version>1.4.0</version>
+  <packaging>pom</packaging>
+  <name>Spring Cloud Oracle</name>
+  <description>Spring Cloud Oracle</description>
+  <url>https://github.com/oracle/spring-cloud-oci/#spring-cloud-oci-documentation</url>
+  <licenses>
+    <license>
+      <name>Oracle Free Use Terms and Conditions (FUTC)</name>
+      <comments>https://www.oracle.com/downloads/licenses/oracle-free-license.html</comments>
+    </license>
+  </licenses>
+  <developers>
+    <developer>
+      <name>Oracle</name>
+      <email>obaas_ww at oracle.com</email>
+      <organization>Oracle America, Inc.</organization>
+      <organizationUrl>https://www.oracle.com</organizationUrl>
+    </developer>
+  </developers>
+  <scm>
+    <connection>scm:git:https://github.com/oracle/spring-cloud-oracle.git</connection>
+    <developerConnection>scm:git:git@github.com:oracle/spring-cloud-oracle.git</developerConnection>
+    <url>https://github.com/oracle/spring-cloud-oracle</url>
+  </scm>
+</project>
