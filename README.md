@@ -31,6 +31,18 @@ Quando o failover esta habilitado, a aplicacao tambem consegue reagir a uma falh
 
 ## Arquitetura
 
+As cores seguem o mesmo padrao nos dois desenhos:
+
+| Cor | Significado |
+| --- | --- |
+| Azul | Producer e componentes de envio. |
+| Verde | Consumer, processamento e idempotencia. |
+| Roxo | Streams/topicos Kafka ou OCI Streaming. |
+| Vermelho | DLQ e fluxo de falha permanente. |
+| Laranja | Failover, health check e provisionamento OCI. |
+| Cinza | Persistencia local e estado salvo. |
+| Ciano | Observabilidade, lag e Actuator. |
+
 ### Desenho High Level
 
 ```mermaid
@@ -74,6 +86,30 @@ flowchart LR
     state -. "novo bootstrap Kafka" .-> orders2
     orders2 -. "consumo apos failover" .-> consumer
     consumer -. "DLQ apos failover" .-> dlq2
+
+    classDef actorNode fill:#fff7ed,stroke:#f97316,color:#7c2d12,stroke-width:2px;
+    classDef producerNode fill:#dbeafe,stroke:#2563eb,color:#1e3a8a,stroke-width:2px;
+    classDef consumerNode fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:2px;
+    classDef streamNode fill:#eef2ff,stroke:#4f46e5,color:#312e81,stroke-width:2px;
+    classDef dlqNode fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px;
+    classDef storageNode fill:#f1f5f9,stroke:#64748b,color:#0f172a,stroke-width:2px;
+    classDef monitoringNode fill:#ccfbf1,stroke:#0f766e,color:#134e4a,stroke-width:2px;
+    classDef secondaryNode fill:#f3e8ff,stroke:#9333ea,color:#581c87,stroke-width:2px;
+
+    class user actorNode;
+    class runner,producer producerNode;
+    class consumer,processor consumerNode;
+    class orders streamNode;
+    class dlq dlqNode;
+    class h2,state storageNode;
+    class lag,actuator monitoringNode;
+    class orders2 secondaryNode;
+    class dlq2 dlqNode;
+
+    style app fill:#eff6ff,stroke:#60a5fa,stroke-width:2px,color:#0f172a
+    style primary fill:#f8fafc,stroke:#4f46e5,stroke-width:2px,color:#0f172a
+    style storage fill:#f8fafc,stroke:#64748b,stroke-width:2px,color:#0f172a
+    style secondary fill:#faf5ff,stroke:#9333ea,stroke-width:2px,color:#0f172a
 ```
 
 ### Desenho Tecnico Aprofundado
@@ -177,6 +213,37 @@ flowchart TB
     kafkaTemplate -. "apos failover" .-> sOrders
     sOrders -. "consumo ativo" .-> listener
     recoverer -. "DLQ apos failover" .-> sDlq
+
+    classDef configNode fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e,stroke-width:2px;
+    classDef producerNode fill:#dbeafe,stroke:#2563eb,color:#1e3a8a,stroke-width:2px;
+    classDef consumerNode fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:2px;
+    classDef streamNode fill:#eef2ff,stroke:#4f46e5,color:#312e81,stroke-width:2px;
+    classDef dlqNode fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px;
+    classDef failoverNode fill:#ffedd5,stroke:#ea580c,color:#7c2d12,stroke-width:2px;
+    classDef secondaryNode fill:#f3e8ff,stroke:#9333ea,color:#581c87,stroke-width:2px;
+    classDef storageNode fill:#f1f5f9,stroke:#64748b,color:#0f172a,stroke-width:2px;
+    classDef monitorNode fill:#ccfbf1,stroke:#0f766e,color:#134e4a,stroke-width:2px;
+    classDef commitNode fill:#fef9c3,stroke:#ca8a04,color:#713f12,stroke-width:2px;
+
+    class props,kafkaProps,resolver,factories,config configNode;
+    class runner,factory,awareProducer,kafkaTemplate producerNode;
+    class listener,proc,repo,errorHandler,recoverer consumerNode;
+    class ack commitNode;
+    class pPool,pOrders streamNode;
+    class pDlq,sDlq dlqNode;
+    class health,coordinator,provisioner,switcher,store failoverNode;
+    class sPool,sOrders secondaryNode;
+    class h2 storageNode;
+    class lag,actuator monitorNode;
+
+    style boot fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,color:#0f172a
+    style producerSide fill:#eff6ff,stroke:#2563eb,stroke-width:2px,color:#0f172a
+    style consumerSide fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#0f172a
+    style kafkaPrimary fill:#f8fafc,stroke:#4f46e5,stroke-width:2px,color:#0f172a
+    style failover fill:#fff7ed,stroke:#ea580c,stroke-width:2px,color:#0f172a
+    style kafkaSecondary fill:#faf5ff,stroke:#9333ea,stroke-width:2px,color:#0f172a
+    style localData fill:#f8fafc,stroke:#64748b,stroke-width:2px,color:#0f172a
+    style monitoring fill:#f0fdfa,stroke:#0f766e,stroke-width:2px,color:#0f172a
 ```
 
 ## Pre-requisitos
