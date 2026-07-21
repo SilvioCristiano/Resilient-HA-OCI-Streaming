@@ -1,4 +1,4 @@
-# Spring Boot OCI Streaming Demo
+# OCI Streaming High Availability (HA) Failover Example
 
 Aplicacao Spring Boot de demonstracao para producer e consumer usando a API Kafka compativel com Oracle Cloud Infrastructure (OCI) Streaming.
 
