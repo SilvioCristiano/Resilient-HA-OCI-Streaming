@@ -1,139 +1,155 @@
-# OCI Streaming High Availability (HA) Failover Example
+# Spring Boot OCI Streaming Demo
 
-This repository contains a Java application demonstrating a **High Availability (HA) pattern** for consuming and producing messages to **Oracle Cloud Infrastructure (OCI) Streaming**.
+Aplicacao Spring Boot de demonstracao para producer e consumer usando a API Kafka compativel com OCI Streaming.
 
-The key objective is to provide resilience by implementing an automatic failover mechanism: if the primary OCI Stream in the São Paulo region experiences transient errors (HTTP 500 or 429), the application automatically **provisions and switches to a secondary stream** in the Vinhedo region.
+O fluxo principal fica no console: ao iniciar a aplicacao, o producer pergunta a quantidade de mensagens e publica eventos de pedido. O consumer processa em lote, confirma offset somente depois de sucesso, controla idempotencia em uma tabela H2 e envia falhas permanentes para uma DLQ apos retries.
 
-## 🚀 Overview
-![Logo da empresa](s1.png "Overview")  
+Tambem existe uma camada opcional de HA/failover inspirada no exemplo `SilvioCristiano/Resilient-HA-OCI-Streaming`: se o endpoint ativo falhar, a aplicacao cria ou reutiliza streams equivalentes em outra regiao, salva OCID/endpoint/bootstrap em `stream.properties`, atualiza os clients Kafka e reinicia os consumers para consumir do novo stream.
 
-                                                   ┌──────────────────────────────────────────────┐
-                                                   │                LOCAL JAVA APPLICATION        │
-                                                   │                                              │
-                                                   │  ┌──────────────────┐  ┌──────────────────┐  │
-                              (1) Initial Send ─────► │ StreamProducer/  │  │ StreamUtils      │  │
-                                                   │ │ StreamManager (HA)│  │ (Persistence)    │  │
-                                                   │  └──────────────────┘  └──────────────────┘  │
-                                                   └──────────────────────────────────────────────┘
-                                                                     │
-                                                                     │ (2) Primary Attempt
-                                                                     ▼
-              ┌───────────────────────────────────────────────────────────────────────────────────────────┐
-              │                  OCI REGION 1 – SÃO PAULO (Primary)                                       │
-              │                                                                                           │
-              │       ┌─────────────────────────────────────────────────────────────────┐                 │
-     (3) Failure (500/429)◄───────│                 OCI-PRIMARY-STREAM                  │                 │
-              │       └─────────────────────────────────────────────────────────────────┘                 │
-              │                                                                                           │
-              └───────────────────────────────────────────────────────────────────────────────────────────┘
-                                                                     │
-                                                                     │ (4) Failover Triggered!
-                                                                     ▼
-                                                   ┌──────────────────────────────────────────────┐
-                                                   │ StreamManager (HA)                           │
-                                                   │  - If Null: Creates Secondary Stream (Admin) │
-                                                   │  - Saves OCID/Endpoint (via StreamUtils)     │
-                                                   └──────────────────────────────────────────────┘
-                                                                     │
-                                                                     │ (5) Secondary Created / Switchover
-                                                                     ▼
-              ┌───────────────────────────────────────────────────────────────────────────────────────────┐
-              │                  OCI REGION 2 – VINHEDO (Secondary)                                       │
-              │                                                                                           │
-              │       ┌─────────────────────────────────────────────────────────────────┐                 │
-              │       │                 OCI-SECONDARY-STREAM (Dynamically Created)      │◄─────────────────┐
-              │       └─────────────────────────────────────────────────────────────────┘                 ││
-              │                                                                                           ││
-              └───────────────────────────────────────────────────────────────────────────────────────────┘│
-                                                                                                           │
-                                                         (6) Secondary Producer & Consumer Traffic (Read/Write)
+## Como executar no Eclipse
 
-The solution is divided into four main Java classes and one configuration file:
+1. Importe o projeto como `Existing Maven Project`.
+2. Configure as variaveis de ambiente ou argumentos de VM/Program Arguments conforme seu ambiente Kafka/OCI.
+3. Execute a classe `br.com.demo.ocistreaming.OciStreamingDemoApplication`.
+4. No console, informe a quantidade de mensagens quando aparecer:
 
-| Class/File | Description | Role |
-| :--- | :--- | :--- |
-| `StreamProducer.java` | Initiates the producer and uses `StreamManager` to send messages with built-in HA logic. | **Producer Entry Point** |
-| `StreamConsumer.java` | The consumer application. If consumption from the primary stream fails, it attempts to load the secondary stream details and switches consumption to the secondary stream. | **Consumer Entry Point** |
-| `StreamManager.java` | **Core HA Logic.** Manages connection, retry attempts, error handling (500/429), and dynamically provisions the secondary stream in the alternate region (`sa-vinhedo-1`) upon primary failure. | **HA Logic / Provisioner** |
-| `StreamUtils.java` | Utility class responsible for persisting and loading the secondary stream's OCID and endpoint to a local `.properties` file and exporting them as environment variables. | **Persistence / Environment** |
-| `stream.properties` | Local file used by `StreamUtils` to save the secondary stream details. | **Configuration Store** |
-
------
-
-## 🏗️ Prerequisites
-
-1.  **Java Development Kit (JDK) 11+**
-2.  **Apache Maven** (for dependency management, though not explicitly shown in the code, it's assumed for an OCI project).
-3.  **OCI Configuration File:** Authentication must be set up via the `~/.oci/config` file (or `C:\Users\Silvio\.oci\config` as shown in the code) with the correct `[DEFAULT]` profile.
-4.  **IAM Policy:** The configured OCI User must have permissions to:
-      * `STREAM_READ` on the Primary Stream.
-      * `STREAM_WRITE` on the Primary Stream.
-      * `STREAM_READ`, `STREAM_WRITE`, and `STREAM_ADMIN` (for creation) on the secondary **Compartment** in the target region (`sa-vinhedo-1`).
-
------
-
-## 📝 Key Configuration Variables
-
-Before running, ensure the constants in your Java files match your OCI tenancy and resources:
-
-| File | Variable | Description | Your Value |
-| :--- | :--- | :--- | :--- |
-| `StreamProducer.java` / `StreamConsumer.java` | `configPath`, `profile` | Local OCI CLI configuration path and profile name. | `C:\\Users\\Silvio\\.oci\\config`, `DEFAULT` |
-| `StreamProducer.java` / `StreamConsumer.java` | `PRIMARY_STREAM_OCID` | OCID of your primary stream (São Paulo - `sa-saopaulo-1`). | `ocid1.stream...` |
-| `StreamProducer.java` / `StreamConsumer.java` | `PRIMARY_ENDPOINT` | Message endpoint of your primary stream. | `https://cell-1.streaming...` |
-| `StreamManager.java` | `COMPARTMENT_ID` | The OCID of the compartment where the secondary stream will be created. | `ocid1.compartment...` |
-| `StreamManager.java` | `TARGET_REGION` | The secondary failover region. | `sa-vinhedo-1` |
-| `StreamUtils.java` | `ABS_PATH` | The absolute path for the persistence file (`stream.properties`). | `C:\\Users\\Silvio\\...\\stream.properties` |
-
------
-
-## 💾 Core HA Logic (`StreamManager.java`)
-
-The resilience logic is concentrated in the `StreamManager` class:
-
-### 1\. Retry Mechanism
-
-The `trySendWithRetries` method implements an exponential backoff retry logic.
-
-```java
-// Logic inside trySendWithRetries
-// ...
-// Calculate delay: 500ms * 2^attempt (e.g., 1s, 2s, 4s, 8s...)
-int delay = (int) (BASE_DELAY_MS * Math.pow(2, attempt));
-Thread.sleep(delay);
-// ...
+```text
+Quantidade de mensagens para produzir [10]:
 ```
 
-### 2\. Failover Trigger
+Para nao usar prompt interativo, passe em `Program arguments`:
 
-Failover is triggered if the primary stream fails after exhausting all retry attempts.
-
-```java
-private boolean isRetryable(Exception ex) {
-    if (ex instanceof BmcException) {
-        int status = ((BmcException) ex).getStatusCode();
-        // Trigger failover on common transient errors (5xx) or rate limiting (429)
-        return status >= 500 || status == 429;
-    } 
-    // ... basic check for message content
-}
+```text
+--demo.producer.interactive=false --demo.producer.message-count=20
 ```
 
-### 3\. Dynamic Secondary Provisioning
+## Configuracao OCI Streaming
 
-If the secondary stream details are not loaded from the `stream.properties` file, the `createSecondaryStream` method is called.
+Crie dois streams no OCI Streaming: um principal e um para DLQ. Depois configure:
 
-  * It uses the **StreamAdminClient** and explicitly sets the region to `sa-vinhedo-1` (via `StreamAdminClient.builder().region(TARGET_REGION)`).
-  * Upon successful creation, it calls `StreamUtils.saveSecondaryStream` to persist the new OCID and endpoint and updates the environment variable for consumption.
+```text
+SPRING_PROFILES_ACTIVE=oci
+OCI_STREAMING_BOOTSTRAP_SERVERS=<endpoint-do-stream-pool>:9092
+OCI_STREAMING_SASL_JAAS_CONFIG=org.apache.kafka.common.security.plain.PlainLoginModule required username="<tenancy>/<user>/<stream-pool-ocid>" password="<auth-token>";
+DEMO_TOPIC_ORDERS=<stream-principal>
+DEMO_TOPIC_ORDERS_DLQ=<stream-dlq>
+```
 
------
+Para Kafka local, use os defaults `localhost:9092`, `orders-demo` e `orders-demo.DLQ`. Se quiser que o Spring tente criar os topicos em Kafka local:
 
-## 📥 Consumer Failover (`StreamConsumer.java`)
+```text
+--demo.topics.create=true
+```
 
-The consumer continuously tries to read messages.
+Em OCI, normalmente deixe `demo.topics.create=false` e crie os streams antes.
 
-1.  **Initial State:** Consumes from `primaryClient`.
-2.  **Error Handling:** If `consumeOnce` throws an exception, the `catch` block attempts to load the secondary stream details (`secEndpoint`, `secOcid`) using `StreamUtils`.
-3.  **Switchover:** If secondary details are found, the `currentClient` is switched to the `secondaryClient`, a new cursor is created for the secondary stream (`TrimHorizon`), and consumption continues on the new stream.
+## Failover entre regioes
 
-This design ensures that if the primary stream fails (due to capacity, regional outage, etc.), the application quickly **provisions an isolated resource in a separate region** and switches both the producer and consumer traffic to it, maintaining high availability.
+Para habilitar o failover automatico, alem das variaveis do OCI Streaming, configure:
+
+```text
+DEMO_FAILOVER_ENABLED=true
+DEMO_FAILOVER_COMPARTMENT_ID=<ocid-do-compartment-para-stream-secundario>
+DEMO_FAILOVER_TARGET_REGION=sa-vinhedo-1
+DEMO_OCI_CONFIG_PATH=/Users/<usuario>/.oci/config
+DEMO_OCI_PROFILE=DEFAULT
+```
+
+Quando o producer ou o health check detecta erro compatível com queda/transiente do stream, como timeout, desconexao, `500` ou `429`, o fluxo faz:
+
+1. Verifica se ja existe um secundario salvo em `./data/stream.properties`.
+2. Se nao existir, cria o stream principal e a DLQ na regiao secundaria.
+3. Deriva o bootstrap Kafka a partir do endpoint OCI, por exemplo `cell-1.streaming.sa-vinhedo-1.oci.oraclecloud.com:9092`.
+4. Salva o estado ativo em `stream.properties`.
+5. Atualiza `ProducerFactory` e `ConsumerFactory`.
+6. Reinicia os listeners Kafka para consumir do endpoint novo.
+
+Por padrao, os streams secundarios sao criados com os mesmos nomes dos topicos (`orders-demo` e `orders-demo.DLQ`). Isso simplifica o failover porque a aplicacao troca o endpoint, mas mantem o mesmo topico logico. Se quiser nomes diferentes:
+
+```text
+DEMO_FAILOVER_SECONDARY_STREAM_NAME=orders-demo-secondary
+DEMO_FAILOVER_SECONDARY_DLQ_STREAM_NAME=orders-demo-secondary.DLQ
+```
+
+Se o stream secundario estiver em outro stream pool e exigir outro username SASL, informe tambem:
+
+```text
+DEMO_FAILOVER_SECONDARY_SASL_JAAS_CONFIG=org.apache.kafka.common.security.plain.PlainLoginModule required username="<tenancy>/<user>/<stream-pool-secundario-ocid>" password="<auth-token>";
+```
+
+O arquivo salvo fica assim:
+
+```properties
+active.role=SECONDARY
+active.region=sa-vinhedo-1
+active.topic.orders=orders-demo
+active.topic.orders-dlq=orders-demo.DLQ
+secondary.stream.ocid=ocid1.stream...
+secondary.dlq-stream.ocid=ocid1.stream...
+secondary.messages.endpoint=https://cell-1.streaming.sa-vinhedo-1.oci.oraclecloud.com
+secondary.kafka.bootstrap-servers=cell-1.streaming.sa-vinhedo-1.oci.oraclecloud.com:9092
+```
+
+Na proxima inicializacao, se `DEMO_FAILOVER_ENABLED=true` e o arquivo existir, a aplicacao ja inicia usando o endpoint secundario salvo.
+
+## Testes pelo console
+
+Produzir 50 mensagens sem prompt:
+
+```text
+--demo.producer.interactive=false --demo.producer.message-count=50
+```
+
+Testar idempotencia: execute duas vezes com os mesmos argumentos. Como `demo.producer.use-deterministic-event-ids=true`, os mesmos `eventId` serao gerados e o consumer vai ignorar duplicados ja processados.
+
+Testar retry e DLQ a cada 5 mensagens:
+
+```text
+--demo.producer.interactive=false --demo.producer.message-count=15 --demo.producer.poison-every=5 --demo.consumer.retry-attempts=2
+```
+
+Testar falha temporaria que depois processa com sucesso:
+
+```text
+--demo.producer.interactive=false --demo.producer.message-count=10 --demo.producer.transient-every=3 --demo.consumer.transient-failures-before-success=2
+```
+
+Ajustar lote e paralelismo:
+
+```text
+--demo.consumer.batch-size=25 --demo.consumer.concurrency=3
+```
+
+## Praticas implementadas
+
+| Pratica | Onde esta implementado |
+| --- | --- |
+| Partition Key Consistente | `OrderEvent.partitionKey()` e `DemoProducerRunner`, usando `orderId` como chave Kafka. |
+| Consumer Idempotente | `JdbcProcessedEventRepository`, com tabela `processed_events` e `event_id` como chave primaria. |
+| Commit Apos Sucesso | `OrderEventBatchConsumer` chama `acknowledgment.acknowledge()` somente apos processar todo o batch. |
+| Retry + DLQ | `KafkaDemoConfig#errorHandler`, com `DefaultErrorHandler`, `FixedBackOff` e `DeadLetterPublishingRecoverer`. |
+| Monitoramento de Lag | `ConsumerLagMonitor`, que consulta offsets commitados e offsets finais via `AdminClient`. |
+| Cooperative Sticky Rebalance | `partition.assignment.strategy=org.apache.kafka.clients.consumer.CooperativeStickyAssignor` em `application.yml` e `KafkaDemoConfig`. |
+| Batch Processing | `ConcurrentKafkaListenerContainerFactory#setBatchListener(true)` e listener recebendo `List<ConsumerRecord<...>>`. |
+| HA Failover Regional | `StreamingFailoverCoordinator`, `OciStreamProvisioner`, `StreamingFailoverStateStore` e `KafkaClientSwitchService`. |
+
+## Arquivos principais
+
+- `src/main/resources/application.yml`: configuracao Kafka/OCI, producer, consumer, retry e lag.
+- `src/main/resources/schema.sql`: tabela H2 de idempotencia.
+- `src/main/java/br/com/demo/ocistreaming/producer/DemoProducerRunner.java`: producer controlavel pelo console.
+- `src/main/java/br/com/demo/ocistreaming/consumer/OrderEventBatchConsumer.java`: consumer em batch com commit manual.
+- `src/main/java/br/com/demo/ocistreaming/config/KafkaDemoConfig.java`: serializers, batch listener, retry, DLQ e rebalance.
+- `src/main/java/br/com/demo/ocistreaming/ha`: failover regional, criacao de stream secundario, persistencia em arquivo e troca dos clients Kafka.
+
+## Observabilidade
+
+O lag aparece periodicamente no console. Tambem foram habilitados endpoints Actuator:
+
+```text
+/actuator/health
+/actuator/metrics
+/actuator/prometheus
+```
+
+O H2 grava a tabela de idempotencia em `./data/processed-events`. Para repetir uma demonstracao sem historico, pare a aplicacao e remova os arquivos desse diretorio.

@@ -1,0 +1,97 @@
+spring:
+  application:
+    name: spring-boot-oci-streaming
+  kafka:
+    bootstrap-servers: ${OCI_STREAMING_BOOTSTRAP_SERVERS:localhost:9092}
+    client-id: ${DEMO_KAFKA_CLIENT_ID:spring-boot-oci-streaming-demo}
+    properties:
+      security.protocol: ${OCI_STREAMING_SECURITY_PROTOCOL:PLAINTEXT}
+      sasl.mechanism: ${OCI_STREAMING_SASL_MECHANISM:}
+      sasl.jaas.config: ${OCI_STREAMING_SASL_JAAS_CONFIG:}
+      request.timeout.ms: 30000
+      default.api.timeout.ms: 30000
+    producer:
+      acks: all
+      retries: 10
+      properties:
+        max.in.flight.requests.per.connection: 1
+        linger.ms: 20
+        batch.size: 32768
+    consumer:
+      group-id: ${DEMO_CONSUMER_GROUP:oci-streaming-demo-consumer}
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+      properties:
+        partition.assignment.strategy: org.apache.kafka.clients.consumer.CooperativeStickyAssignor
+        max.poll.interval.ms: 300000
+    listener:
+      type: batch
+      ack-mode: manual_immediate
+  datasource:
+    url: ${DEMO_DATASOURCE_URL:jdbc:h2:file:./data/processed-events;AUTO_SERVER=TRUE}
+    username: ${DEMO_DATASOURCE_USERNAME:sa}
+    password: ${DEMO_DATASOURCE_PASSWORD:}
+    driver-class-name: org.h2.Driver
+  sql:
+    init:
+      mode: always
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+demo:
+  topics:
+    orders: ${DEMO_TOPIC_ORDERS:orders-demo}
+    orders-dlq: ${DEMO_TOPIC_ORDERS_DLQ:orders-demo.DLQ}
+    create: ${DEMO_TOPICS_CREATE:false}
+    partitions: ${DEMO_TOPICS_PARTITIONS:3}
+    replication-factor: ${DEMO_TOPICS_REPLICATION_FACTOR:1}
+  producer:
+    enabled: ${DEMO_PRODUCER_ENABLED:true}
+    interactive: ${DEMO_PRODUCER_INTERACTIVE:true}
+    message-count: ${DEMO_PRODUCER_MESSAGE_COUNT:10}
+    delay-ms: ${DEMO_PRODUCER_DELAY_MS:150}
+    start-sequence: ${DEMO_PRODUCER_START_SEQUENCE:1}
+    order-pool-size: ${DEMO_PRODUCER_ORDER_POOL_SIZE:5}
+    poison-every: ${DEMO_PRODUCER_POISON_EVERY:0}
+    transient-every: ${DEMO_PRODUCER_TRANSIENT_EVERY:0}
+    use-deterministic-event-ids: ${DEMO_PRODUCER_DETERMINISTIC_EVENT_IDS:true}
+  consumer:
+    enabled: ${DEMO_CONSUMER_ENABLED:true}
+    concurrency: ${DEMO_CONSUMER_CONCURRENCY:1}
+    batch-size: ${DEMO_CONSUMER_BATCH_SIZE:10}
+    simulated-work-ms: ${DEMO_CONSUMER_SIMULATED_WORK_MS:100}
+    retry-backoff-ms: ${DEMO_CONSUMER_RETRY_BACKOFF_MS:1000}
+    retry-attempts: ${DEMO_CONSUMER_RETRY_ATTEMPTS:3}
+    transient-failures-before-success: ${DEMO_CONSUMER_TRANSIENT_FAILURES_BEFORE_SUCCESS:2}
+    lag-monitor-enabled: ${DEMO_LAG_MONITOR_ENABLED:true}
+    lag-monitor-interval-ms: ${DEMO_LAG_MONITOR_INTERVAL_MS:15000}
+  failover:
+    enabled: ${DEMO_FAILOVER_ENABLED:false}
+    health-check-enabled: ${DEMO_FAILOVER_HEALTH_CHECK_ENABLED:true}
+    activate-persisted-secondary-on-startup: ${DEMO_FAILOVER_ACTIVATE_PERSISTED_SECONDARY:true}
+    create-streams: ${DEMO_FAILOVER_CREATE_STREAMS:true}
+    create-dlq: ${DEMO_FAILOVER_CREATE_DLQ:true}
+    state-file: ${DEMO_FAILOVER_STATE_FILE:./data/stream.properties}
+    oci-config-path: ${DEMO_OCI_CONFIG_PATH:${user.home}/.oci/config}
+    oci-profile: ${DEMO_OCI_PROFILE:DEFAULT}
+    compartment-id: ${DEMO_FAILOVER_COMPARTMENT_ID:}
+    target-region: ${DEMO_FAILOVER_TARGET_REGION:sa-vinhedo-1}
+    secondary-stream-name: ${DEMO_FAILOVER_SECONDARY_STREAM_NAME:}
+    secondary-dlq-stream-name: ${DEMO_FAILOVER_SECONDARY_DLQ_STREAM_NAME:}
+    secondary-bootstrap-servers: ${DEMO_FAILOVER_SECONDARY_BOOTSTRAP_SERVERS:}
+    secondary-security-protocol: ${DEMO_FAILOVER_SECONDARY_SECURITY_PROTOCOL:}
+    secondary-sasl-mechanism: ${DEMO_FAILOVER_SECONDARY_SASL_MECHANISM:}
+    secondary-sasl-jaas-config: ${DEMO_FAILOVER_SECONDARY_SASL_JAAS_CONFIG:}
+    partitions: ${DEMO_FAILOVER_PARTITIONS:0}
+    kafka-bootstrap-port: ${DEMO_FAILOVER_KAFKA_BOOTSTRAP_PORT:9092}
+    admin-max-wait-seconds: ${DEMO_FAILOVER_ADMIN_MAX_WAIT_SECONDS:120}
+    admin-poll-interval-seconds: ${DEMO_FAILOVER_ADMIN_POLL_INTERVAL_SECONDS:5}
+    health-check-interval-ms: ${DEMO_FAILOVER_HEALTH_CHECK_INTERVAL_MS:15000}
+    health-check-timeout-ms: ${DEMO_FAILOVER_HEALTH_CHECK_TIMEOUT_MS:5000}
