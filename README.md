@@ -31,45 +31,152 @@ Quando o failover esta habilitado, a aplicacao tambem consegue reagir a uma falh
 
 ## Arquitetura
 
-```text
-Console/Eclipse
-    |
-    v
-DemoProducerRunner
-    |
-    v
-FailoverAwareOrderProducer
-    |
-    v
-Kafka/OCI Streaming topic: orders-demo
-    |
-    v
-OrderEventBatchConsumer
-    |
-    +--> JdbcProcessedEventRepository (H2: processed_events)
-    |
-    +--> Commit manual apos sucesso do batch
-    |
-    +--> DefaultErrorHandler + Retry
-             |
-             v
-         DLQ: orders-demo.DLQ
+### Desenho High Level
 
-Failover opcional:
+```mermaid
+flowchart LR
+    user["Operador<br/>Eclipse Console"] --> runner
 
-Producer/Health Check detecta falha
-    |
-    v
-StreamingFailoverCoordinator
-    |
-    v
-OciStreamProvisioner cria/reutiliza stream secundario
-    |
-    v
-StreamingFailoverStateStore grava ./data/stream.properties
-    |
-    v
-KafkaClientSwitchService reinicia consumers com o novo endpoint
+    subgraph app["Spring Boot OCI Streaming Demo"]
+        runner["DemoProducerRunner<br/>entrada da quantidade"]
+        producer["FailoverAwareOrderProducer<br/>publica OrderEvent"]
+        consumer["OrderEventBatchConsumer<br/>consome em lote"]
+        processor["OrderEventProcessor<br/>idempotencia e regras"]
+        lag["ConsumerLagMonitor<br/>lag operacional"]
+        actuator["Actuator<br/>health metrics prometheus"]
+    end
+
+    subgraph primary["OCI Streaming ou Kafka<br/>Regiao primaria"]
+        orders["orders-demo<br/>stream principal"]
+        dlq["orders-demo.DLQ<br/>dead letter stream"]
+    end
+
+    subgraph storage["Persistencia local da demo"]
+        h2["H2<br/>processed_events"]
+        state["stream.properties<br/>endpoint ativo"]
+    end
+
+    subgraph secondary["OCI Streaming<br/>Regiao secundaria"]
+        orders2["orders-demo<br/>stream secundario"]
+        dlq2["orders-demo.DLQ<br/>DLQ secundaria"]
+    end
+
+    runner --> producer
+    producer -- "partition key = orderId" --> orders
+    orders --> consumer
+    consumer --> processor
+    processor --> h2
+    consumer -- "falha permanente apos retries" --> dlq
+    lag -. "consulta offsets" .-> orders
+    actuator -. "exposicao operacional" .-> user
+
+    producer -. "falha no endpoint ativo" .-> state
+    state -. "novo bootstrap Kafka" .-> orders2
+    orders2 -. "consumo apos failover" .-> consumer
+    consumer -. "DLQ apos failover" .-> dlq2
+```
+
+### Desenho Tecnico Aprofundado
+
+```mermaid
+flowchart TB
+    subgraph boot["Inicializacao Spring Boot"]
+        props["StreamingDemoProperties<br/>demo.*"]
+        kafkaProps["KafkaProperties<br/>spring.kafka.*"]
+        resolver["ActiveStreamingTargetResolver<br/>primario ou secundario salvo"]
+        factories["KafkaClientPropertiesFactory<br/>aplica bootstrap e SASL ativos"]
+        config["KafkaDemoConfig<br/>ProducerFactory ConsumerFactory AdminClient"]
+    end
+
+    subgraph producerSide["Producer"]
+        runner["DemoProducerRunner"]
+        factory["DemoOrderEventFactory"]
+        awareProducer["FailoverAwareOrderProducer"]
+        kafkaTemplate["KafkaTemplate<br/>String to OrderEvent"]
+    end
+
+    subgraph consumerSide["Consumer"]
+        listener["OrderEventBatchConsumer<br/>@KafkaListener batch"]
+        proc["OrderEventProcessor"]
+        repo["JdbcProcessedEventRepository"]
+        ack["Acknowledgment.acknowledge()<br/>commit manual apos sucesso"]
+        errorHandler["DefaultErrorHandler<br/>FixedBackOff"]
+        recoverer["DeadLetterPublishingRecoverer"]
+    end
+
+    subgraph kafkaPrimary["Regiao primaria / Kafka API"]
+        pPool["Stream Pool primario<br/>bootstrap OCI_STREAMING_BOOTSTRAP_SERVERS"]
+        pOrders["Stream orders-demo"]
+        pDlq["Stream orders-demo.DLQ"]
+    end
+
+    subgraph failover["HA Failover"]
+        health["StreamingFailoverHealthMonitor"]
+        coordinator["StreamingFailoverCoordinator<br/>controle de failover unico"]
+        provisioner["OciStreamProvisioner<br/>OCI SDK StreamingAdmin"]
+        switcher["KafkaClientSwitchService<br/>reinicia listener containers"]
+        store["StreamingFailoverStateStore<br/>./data/stream.properties"]
+    end
+
+    subgraph kafkaSecondary["Regiao secundaria / Kafka API"]
+        sPool["Stream Pool secundario"]
+        sOrders["Stream secundario"]
+        sDlq["DLQ secundaria"]
+    end
+
+    subgraph localData["Dados locais"]
+        h2["H2 file database<br/>processed_events"]
+    end
+
+    subgraph monitoring["Observabilidade"]
+        lag["ConsumerLagMonitor<br/>AdminClient endOffsets committed"]
+        actuator["Spring Boot Actuator<br/>health metrics prometheus"]
+    end
+
+    props --> resolver
+    kafkaProps --> factories
+    resolver --> factories
+    factories --> config
+    config --> kafkaTemplate
+    config --> listener
+    config --> lag
+
+    pPool --> pOrders
+    pPool --> pDlq
+    sPool --> sOrders
+    sPool --> sDlq
+
+    runner --> factory
+    factory --> awareProducer
+    awareProducer --> kafkaTemplate
+    kafkaTemplate -- "key = orderId<br/>acks=all retries=10 max.in.flight=1" --> pOrders
+
+    pOrders --> listener
+    listener --> proc
+    proc --> repo
+    repo --> h2
+    proc --> ack
+    listener -- "exception" --> errorHandler
+    errorHandler -- "tentativas esgotadas" --> recoverer
+    recoverer --> pDlq
+
+    lag -. "offsets e lag por particao" .-> pOrders
+    actuator -. "endpoints /actuator/*" .-> monitoring
+
+    awareProducer -. "timeout desconexao 500 429" .-> coordinator
+    health -. "health check do endpoint ativo" .-> coordinator
+    coordinator --> provisioner
+    provisioner -- "create ou reuse stream" --> sOrders
+    provisioner -- "create ou reuse DLQ" --> sDlq
+    provisioner --> store
+    store --> resolver
+    coordinator --> switcher
+    switcher --> listener
+    resolver -. "novo bootstrap e credenciais" .-> factories
+
+    kafkaTemplate -. "apos failover" .-> sOrders
+    sOrders -. "consumo ativo" .-> listener
+    recoverer -. "DLQ apos failover" .-> sDlq
 ```
 
 ## Pre-requisitos
