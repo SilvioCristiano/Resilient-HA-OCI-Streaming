@@ -12,7 +12,7 @@ public class StreamProducer {
         var cfg = ConfigFileReader.parse(configPath, profile);
         var provider = new ConfigFileAuthenticationDetailsProvider(cfg);
 
-        final String PRIMARY_STREAM_OCID = "ocid1.stream.oc1.sa-saopaulo-1.amaaaaaa7acctnqaexpq5jownt6ig47d5sjgn3fdoanjrvfeixauujk3wmaq"; // ajusta
+        final String PRIMARY_STREAM_OCID = "ocid1.stream.oc1.sa-saopaulo-1."; // ajusta
         final String PRIMARY_ENDPOINT = "https://cell-1.streaming.sa-saopaulo-1.oci.oraclecloud.com"; // ajusta
 
         StreamManager manager = new StreamManager(provider, PRIMARY_STREAM_OCID, PRIMARY_ENDPOINT);
