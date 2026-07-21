@@ -26,7 +26,7 @@ public class StreamManager {
 
     private static final int MAX_RETRIES = 4;
     private static final int BASE_DELAY_MS = 500;
-    private static final String COMPARTMENT_ID = "ocid1.compartment.oc1..aaaaaaaayyfw5s76wsgg2d6td4ywm3l5xwkuckkh6cmahmjq7mvnltyazfyq"; // ajusta
+    private static final String COMPARTMENT_ID = "ocid1.compartment.oc1.."; // ajusta
     private static final String SECONDARY_NAME = "OCI-SECONDARY-STREAM";
     private static final String TARGET_REGION = "sa-vinhedo-1";
    
