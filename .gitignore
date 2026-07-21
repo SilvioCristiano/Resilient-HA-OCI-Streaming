@@ -1,0 +1,12 @@
+target/
+bin/
+data/
+stream.properties
+.DS_Store
+.idea/
+.vscode/
+.settings/
+.classpath
+.project
+*.iml
+*.log
