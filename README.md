@@ -43,6 +43,8 @@ As cores seguem o mesmo padrao nos dois desenhos:
 | Cinza | Persistencia local e estado salvo. |
 | Ciano | Observabilidade, lag e Actuator. |
 
+Tambem ha uma versao em PowerPoint da arquitetura usando icones do OCI Architecture Diagram Toolkit: [`OCI_Streaming_HA_Architecture.pptx`](OCI_Streaming_HA_Architecture.pptx).
+
 ### Desenho High Level
 
 ```mermaid
