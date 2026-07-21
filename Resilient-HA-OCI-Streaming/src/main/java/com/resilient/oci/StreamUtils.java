@@ -5,7 +5,7 @@ import java.util.Properties;
 
 public class StreamUtils {
 
-    private static final String ABS_PATH = "C:\\Users\\Silvio\\genai\\gs-rest-service-initial2\\src\\main\\resources\\stream.properties";
+    private static final String ABS_PATH = "C:\\Silvio\\genai\\gs-rest-service-initial2\\src\\main\\resources\\stream.properties";
     private static final String KEY_ENDPOINT = "SECONDARY_STREAM_ENDPOINT";
     private static final String KEY_OCID = "SECONDARY_STREAM_OCID";
 
